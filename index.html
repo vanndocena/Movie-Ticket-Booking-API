@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" /> 
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /> 
+  <title>Movie Booking</title> 
+  <link rel="stylesheet" href="styles.css" /> 
+</head>
+
+<body>
+  <header>
+    <h1>Movie Ticket Booking</h1>
+  </header>
+
+  <main>
+    <h2>Available Movies</h2> 
+    <div id="movies-list" class="category"></div> <!-- Empty div to show the list of movies -->
+    <div id="booking-message"></div> <!-- Div to show booking messages -->
+  </main>
+
+  <script>
+    // Fetch movie list from the server
+    async function fetchMovies() {
+      try {
+        const response = await fetch('/movies');
+        const movies = await response.json();
+        displayMovies(movies, 'movies-list');
+      } catch (error) {
+        console.error("Failed to load movies:", error);
+        document.getElementById('movies-list').innerHTML = '<p>Error loading movies.</p>';
+      }
+    }
+
+    // Display movies on the page
+    function displayMovies(movies, containerId) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = ''; // Clear existing content
+
+      if (movies.length === 0) {
+        container.innerHTML = '<p>No available movies right now.</p>';
+        return;
+      }
+
+      movies.forEach(movie => {
+        const movieDiv = document.createElement('div');
+        movieDiv.classList.add('movie');
+
+        const imagePath = movie.image || '/images/default.jpg';
+
+        movieDiv.innerHTML = `
+          <img src="${imagePath}" alt="${movie.title}" class="movie-image" 
+               onerror="this.onerror=null;this.src='/images/default.jpg'">
+          <h3>${movie.title}</h3>
+          <p>Price: ${movie.price}</p>
+          <p>Seats Available: ${movie.seatsAvailable}</p>
+          <button onclick="bookTicket(${movie.id}, '${movie.title}', ${movie.seatsAvailable})">Book Now</button>
+        `;
+
+        container.appendChild(movieDiv);
+      });
+    }
+
+    // Handle ticket booking
+    async function bookTicket(movieId, movieTitle, seatsAvailable) {
+      if (seatsAvailable === 0) {
+        alert('No seats available for this movie.');
+        return;
+      }
+
+      const customerName = prompt("Enter your name:");
+      if (!customerName) return;
+
+      try {
+        const response = await fetch('/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ movieId, customerName })
+        });
+
+        const result = await response.json();
+        const bookingMessageDiv = document.getElementById('booking-message');
+        bookingMessageDiv.textContent = result.message || 'Error booking ticket';
+
+        if (response.ok) {
+          alert(`Success: ${result.message}`);
+        } else {
+          alert(`Error: ${result.message}`);
+        }
+
+        fetchMovies(); // Refresh movie list
+      } catch (error) {
+        alert("Booking failed. Please try again.");
+        console.error("Booking error:", error);
+      }
+    }
+
+    // Load movies on page load
+    fetchMovies();
+  </script>
+</body>
+</html>
